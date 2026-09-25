@@ -1,0 +1,428 @@
+{% extends "base.html" %} {% from "macros.jinja" import window_vars with context
+%} {% block page %}
+<q-card flat>
+  <q-card-section>
+    <div class="row items-center q-mb-md">
+      <div class="col">
+        <div class="text-h5">Denchi Card</div>
+      </div>
+      <div class="col-auto">
+        <q-btn
+          outline
+          color="negative"
+          label="Disable All Cards"
+          :loading="bulkDisableDialog.processing"
+          :disable="bulkDisableDialog.processing"
+          @click="openBulkDisableDialog"
+        ></q-btn>
+      </div>
+    </div>
+
+    <div class="row q-col-gutter-sm items-start q-mb-md">
+      <div class="col-12 col-sm-8">
+        <q-select
+          filled
+          dense
+          emit-value
+          map-options
+          v-model="issueProfileId"
+          :options="profiles"
+          option-value="id"
+          option-label="name"
+          label="Profile"
+        ></q-select>
+      </div>
+      <div class="col-12 col-sm-4 row q-col-gutter-sm">
+        <div class="col-6">
+          <q-btn
+            unelevated
+            color="primary"
+            label="Issue Card"
+            class="full-width"
+            :disable="!issueProfileId || issuing"
+            :loading="issuing"
+            @click="issueCard"
+          ></q-btn>
+        </div>
+        <div class="col-6">
+          <q-btn
+            outline
+            color="primary"
+            label="Balance Check"
+            class="full-width"
+            href="/denchi/lookup"
+            target="_blank"
+          ></q-btn>
+        </div>
+      </div>
+    </div>
+
+    <div class="row q-col-gutter-sm q-mb-md">
+      <div class="col-12 col-sm-4">
+        <q-input
+          filled
+          dense
+          v-model="denchiWalletSearch"
+          label="Wallet name search"
+          debounce="300"
+          clearable
+          @update:model-value="filterCards"
+        ></q-input>
+      </div>
+      <div class="col-12 col-sm-4">
+        <q-select
+          filled
+          dense
+          disable
+          emit-value
+          map-options
+          v-model="denchiEnabledFilter"
+          :options="denchiEnabledFilterOptions"
+          label="Enabled state"
+          hint="Filtering is unavailable with the Withdraw API"
+        ></q-select>
+      </div>
+      <div class="col-12 col-sm-4">
+        <q-select
+          filled
+          dense
+          emit-value
+          map-options
+          v-model="denchiNfcFilter"
+          :options="denchiNfcFilterOptions"
+          label="NFC state"
+          @update:model-value="filterCards"
+        ></q-select>
+      </div>
+    </div>
+
+    <q-table
+      flat
+      :rows="cards"
+      :columns="denchiColumns"
+      row-key="id"
+      :loading="cardsLoading"
+      v-model:pagination="denchiPagination"
+      :rows-per-page-options="[10, 25, 50, 100]"
+      @request="getCards"
+    >
+      <template #body-cell-withdraw_link="props">
+        <q-td :props="props">
+          <a
+            v-if="props.row.withdraw_url"
+            :href="props.row.withdraw_url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open link
+          </a>
+          <span v-else>—</span>
+        </q-td>
+      </template>
+      <template #body-cell-enabled="props">
+        <q-td :props="props">
+          <q-badge v-if="props.row.enabled === true" color="positive">
+            Enabled
+          </q-badge>
+          <q-badge v-else-if="props.row.enabled === false" color="grey">
+            Disabled
+          </q-badge>
+          <span v-else>—</span>
+          <q-btn
+            v-if="props.row.enabled !== null"
+            flat
+            dense
+            size="sm"
+            color="primary"
+            class="q-ml-sm"
+            :label="props.row.enabled ? 'Disable' : 'Enable'"
+            :loading="enabledUpdatingId === props.row.id"
+            :disable="enabledUpdatingId !== null"
+            @click="setCardEnabled(props.row)"
+          ></q-btn>
+        </q-td>
+      </template>
+      <template #body-cell-nfc="props">
+        <q-td :props="props">
+          <q-badge v-if="props.row.nfc_written" color="positive">
+            Written
+          </q-badge>
+          <q-badge v-else color="grey">Unwritten</q-badge>
+        </q-td>
+      </template>
+      <template #body-cell-actions="props">
+        <q-td :props="props" auto-width>
+          <q-btn
+            v-if="!props.row.nfc_written"
+            flat
+            dense
+            color="primary"
+            icon="nfc"
+            label="Write NFC"
+            @click="prepareNfcWrite(props.row.id)"
+          ></q-btn>
+          <q-btn
+            flat
+            round
+            dense
+            color="negative"
+            icon="delete"
+            @click="openDeleteCardDialog(props.row)"
+          >
+            <q-tooltip>Delete card</q-tooltip>
+          </q-btn>
+        </q-td>
+      </template>
+      <template #no-data>
+        <div class="full-width row flex-center text-grey q-gutter-sm q-pa-md">
+          No cards yet.
+        </div>
+      </template>
+    </q-table>
+  </q-card-section>
+</q-card>
+
+<q-card flat class="q-mt-md">
+  <q-card-section>
+    <div class="row items-center q-mb-md">
+      <div class="col">
+        <div class="text-h5">Profiles</div>
+        <div class="text-caption text-grey-7">Templates for future cards</div>
+      </div>
+      <div class="col-auto">
+        <q-btn
+          unelevated
+          color="primary"
+          label="Create Profile"
+          @click="openCreateDialog"
+        ></q-btn>
+      </div>
+    </div>
+
+    <q-table
+      flat
+      :rows="profiles"
+      :columns="profileColumns"
+      row-key="id"
+      :loading="loading"
+      :pagination="{rowsPerPage: 10}"
+    >
+      <template #body-cell-expiration="props">
+        <q-td :props="props">
+          <span v-if="props.row.expiration_value">
+            [[ props.row.expiration_value ]] [[ props.row.expiration_unit ]]
+          </span>
+          <span v-else>Never</span>
+        </q-td>
+      </template>
+      <template #body-cell-actions="props">
+        <q-td :props="props" auto-width>
+          <q-btn
+            flat
+            round
+            dense
+            color="negative"
+            icon="delete"
+            @click="confirmDelete(props.row)"
+          >
+            <q-tooltip>Delete</q-tooltip>
+          </q-btn>
+        </q-td>
+      </template>
+      <template #no-data>
+        <div class="full-width row flex-center text-grey q-gutter-sm q-pa-md">
+          No profiles yet.
+        </div>
+      </template>
+    </q-table>
+  </q-card-section>
+</q-card>
+
+<q-dialog v-model="profileDialog.show" position="top">
+  <q-card class="q-pa-lg lnbits__dialog-card">
+    <q-card-section class="q-pa-none q-pb-md">
+      <div class="text-h6">Create Profile</div>
+    </q-card-section>
+    <q-form @submit="createProfile" class="q-gutter-md">
+      <q-input
+        filled
+        dense
+        v-model.trim="profileDialog.data.name"
+        label="Name *"
+        :rules="[requiredRule]"
+      ></q-input>
+      <q-input
+        filled
+        dense
+        v-model.trim="profileDialog.data.wallet_name_base"
+        label="Wallet name base *"
+        :rules="[requiredRule]"
+      ></q-input>
+      <q-input
+        filled
+        dense
+        v-model.number="profileDialog.data.max_payment_per_use"
+        type="number"
+        min="1"
+        step="1"
+        suffix="sats"
+        label="Maximum payment per use *"
+        :rules="[positiveIntegerRule]"
+      ></q-input>
+      <q-toggle
+        v-model="profileDialog.useExpiration"
+        label="Set expiration"
+      ></q-toggle>
+      <div v-if="profileDialog.useExpiration" class="row q-col-gutter-sm">
+        <div class="col-8">
+          <q-input
+            filled
+            dense
+            v-model.number="profileDialog.data.expiration_value"
+            type="number"
+            min="0"
+            step="1"
+            label="Expiration *"
+            :rules="[positiveIntegerRule]"
+          ></q-input>
+        </div>
+        <div class="col-4">
+          <q-select
+            filled
+            dense
+            v-model="profileDialog.data.expiration_unit"
+            :options="expirationUnits"
+            label="Unit *"
+          ></q-select>
+        </div>
+      </div>
+      <div class="row q-mt-lg">
+        <q-btn
+          unelevated
+          color="primary"
+          type="submit"
+          label="Create"
+          :loading="profileDialog.saving"
+        ></q-btn>
+        <q-btn
+          v-close-popup
+          flat
+          color="grey"
+          class="q-ml-auto"
+          label="Cancel"
+        ></q-btn>
+      </div>
+    </q-form>
+  </q-card>
+</q-dialog>
+
+<q-dialog v-model="nfcDialog.show" persistent>
+  <q-card class="q-pa-lg lnbits__dialog-card">
+    <q-card-section class="q-pa-none q-pb-md">
+      <div class="text-h6">Tap an NFC card</div>
+      <div class="text-caption text-grey-7">Card [[ nfcDialog.denchiId ]]</div>
+    </q-card-section>
+    <q-card-section class="q-pa-none">
+      <div v-if="nfcDialog.writing" class="row items-center q-gutter-sm">
+        <q-spinner color="primary" size="2em"></q-spinner>
+        <span>Waiting for an empty NFC tag…</span>
+      </div>
+      <q-banner v-if="nfcDialog.error" dense class="bg-red-1 text-negative">
+        [[ nfcDialog.error ]]
+      </q-banner>
+      <div class="text-caption text-grey-7 q-mt-md">
+        Existing NDEF content will not be overwritten.
+      </div>
+    </q-card-section>
+    <q-card-actions align="right" class="q-pa-none q-pt-md">
+      <q-btn
+        v-if="nfcDialog.error"
+        unelevated
+        color="primary"
+        label="Retry"
+        :loading="nfcDialog.writing"
+        @click="retryNfcWrite"
+      ></q-btn>
+      <q-btn flat color="grey" label="Cancel" @click="closeNfcDialog"></q-btn>
+    </q-card-actions>
+  </q-card>
+</q-dialog>
+
+<q-dialog v-model="bulkDisableDialog.show" persistent>
+  <q-card class="q-pa-lg lnbits__dialog-card">
+    <q-card-section class="q-pa-none q-pb-md">
+      <div class="text-h6 text-negative">Disable all enabled Cards?</div>
+    </q-card-section>
+    <q-card-section class="q-pa-none">
+      <p>
+        This will disable every currently enabled Card owned by this account.
+      </p>
+      <p>
+        Disabled Cards can be enabled again individually later. Existing cards
+        and balances will not be deleted.
+      </p>
+    </q-card-section>
+    <q-card-actions align="right" class="q-pa-none q-pt-md">
+      <q-btn
+        flat
+        color="grey"
+        label="Cancel"
+        :disable="bulkDisableDialog.processing"
+        @click="closeBulkDisableDialog"
+      ></q-btn>
+      <q-btn
+        unelevated
+        color="negative"
+        label="Disable All"
+        :loading="bulkDisableDialog.processing"
+        :disable="bulkDisableDialog.processing"
+        @click="disableAllCards"
+      ></q-btn>
+    </q-card-actions>
+  </q-card>
+</q-dialog>
+
+<q-dialog v-model="deleteDialog.show" persistent>
+  <q-card v-if="deleteDialog.denchi" class="q-pa-lg lnbits__dialog-card">
+    <q-card-section class="q-pa-none q-pb-md">
+      <div class="text-h6 text-negative">Delete card?</div>
+    </q-card-section>
+    <q-card-section class="q-pa-none q-gutter-y-sm">
+      <div>
+        <strong>Wallet:</strong>
+        [[ deleteDialog.denchi.wallet_name || '—' ]]
+      </div>
+      <div>
+        <strong>Current balance:</strong>
+        <span v-if="deleteDialog.denchi.balance !== null">
+          [[ deleteDialog.denchi.balance.toLocaleString() ]] sats
+        </span>
+        <span v-else>—</span>
+      </div>
+      <q-banner dense class="bg-red-1 text-negative q-mt-md">
+        The associated Withdraw link and LNbits wallet will also be deleted.
+        This cannot be undone.
+      </q-banner>
+    </q-card-section>
+    <q-card-actions align="right" class="q-pa-none q-pt-md">
+      <q-btn
+        flat
+        color="grey"
+        label="Cancel"
+        :disable="deleteDialog.deleting"
+        @click="closeDeleteCardDialog"
+      ></q-btn>
+      <q-btn
+        unelevated
+        color="negative"
+        label="Delete"
+        :loading="deleteDialog.deleting"
+        :disable="deleteDialog.deleting"
+        @click="deleteCard"
+      ></q-btn>
+    </q-card-actions>
+  </q-card>
+</q-dialog>
+{% endblock %} {% block scripts %} {{ window_vars(user) }}
+<script src="{{ static_url_for('denchi/static', path='js/index.js') }}"></script>
+{% endblock %}

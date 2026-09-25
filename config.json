@@ -1,0 +1,5 @@
+{
+  "name": "Denchi Card",
+  "short_description": "Issue and manage NFC Lightning cards.",
+  "min_lnbits_version": "1.6.2"
+}

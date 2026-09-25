@@ -1,0 +1,10 @@
+{
+  "name": "denchi",
+  "version": "0.2.0",
+  "description": "Denchi Card extension for LNbits",
+  "private": true,
+  "dependencies": {
+    "prettier": "^3.2.5",
+    "pyright": "^1.1.358"
+  }
+}

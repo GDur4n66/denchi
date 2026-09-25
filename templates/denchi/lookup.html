@@ -1,0 +1,97 @@
+{% extends "public.html" %} {% block title %}Denchi Card Balance{% endblock %}
+{% block page %}
+<div class="row justify-center">
+  <div class="col-12 col-sm-8 col-md-6 col-lg-5">
+    <q-card class="q-pa-md">
+      <q-card-section>
+        <div class="text-h5 text-center">Denchi Card Balance</div>
+      </q-card-section>
+
+      <q-card-section class="text-center">
+        <q-btn
+          v-if="!scanning"
+          unelevated
+          color="primary"
+          icon="nfc"
+          label="Start Scan"
+          :loading="starting"
+          :disable="starting"
+          @click="startScan()"
+        ></q-btn>
+        <template v-else>
+          <div class="row justify-center items-center q-gutter-sm">
+            <q-spinner color="primary" size="2em"></q-spinner>
+            <span class="text-subtitle1">Tap your card</span>
+          </div>
+          <q-btn
+            unelevated
+            color="primary"
+            icon="nfc"
+            label="Stop Scan"
+            class="q-mt-md"
+            @click="stopScan"
+          ></q-btn>
+        </template>
+      </q-card-section>
+
+      <q-card-section v-if="loading" class="text-center">
+        <q-spinner color="primary" size="2em"></q-spinner>
+        <div class="text-caption text-grey-7 q-mt-sm">Checking card…</div>
+      </q-card-section>
+
+      <q-card-section v-if="error">
+        <q-banner dense class="bg-red-1 text-negative"> [[ error ]] </q-banner>
+      </q-card-section>
+
+      <template v-if="result">
+        <q-separator></q-separator>
+        <q-card-section class="text-center">
+          <div class="text-caption text-grey-7">Balance</div>
+          <div class="text-h4">[[ formatSats(result.balance) ]] sats</div>
+        </q-card-section>
+
+        <q-card-section>
+          <div class="text-h6 q-mb-sm">Usage History</div>
+          <q-list v-if="result.history.length" separator>
+            <q-item v-for="entry in result.history" :key="entry.timestamp">
+              <q-item-section
+                >[[ formatTimestamp(entry.timestamp) ]]</q-item-section
+              >
+              <q-item-section side>
+                [[ formatSats(entry.amount) ]] sats
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else class="text-grey-7">No usage yet.</div>
+        </q-card-section>
+        {% if receipt_terminal %}
+        <q-card-section class="text-center">
+          <q-btn
+            unelevated
+            color="primary"
+            icon="print"
+            label="Print Receipt"
+            :loading="printing"
+            :disable="printing"
+            @click="printReceipt('manual')"
+          ></q-btn>
+        </q-card-section>
+        {% endif %}
+      </template>
+    </q-card>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  window.denchiReceiptTerminal = null
+</script>
+{% if receipt_terminal %}
+<script>
+  window.denchiReceiptTerminal = {
+    token: {{ receipt_token | tojson }},
+    autoPrint: {{ receipt_auto_print | tojson }}
+  }
+</script>
+{% endif %}
+<script src="{{ static_url_for('denchi/static', path='js/lookup.js') }}"></script>
+{% endblock %}
