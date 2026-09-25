@@ -92,7 +92,7 @@ def _parse_printer(value: str | None) -> tuple[str, int] | None:
 
 
 def _get_config() -> ReceiptConfig:
-    settings = ReceiptSettings()
+    settings = ReceiptSettings()  # pyright: ignore[reportCallIssue]
     printer_value = settings.denchi_receipt_printer
     try:
         printer = _parse_printer(printer_value)

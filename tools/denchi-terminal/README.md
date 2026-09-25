@@ -55,8 +55,7 @@ DENCHI_MODE=public
 DENCHI_API_URL=https://your-lnbits-host/denchi/api/v1/public/lookup
 ```
 
-To print receipts, also set `DENCHI_PRINTER_HOST`. The printer port defaults to
-9100. `DENCHI_HISTORY_LIMIT` controls the number of usage entries printed and
+To print receipts, also set `DENCHI_PRINTER_HOST`. The printer port defaults to 9100. `DENCHI_HISTORY_LIMIT` controls the number of usage entries printed and
 must be between 0 and 20.
 
 The equivalent command-line configuration is:

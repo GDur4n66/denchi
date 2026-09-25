@@ -430,8 +430,8 @@ def withdraw_update_request(data: dict, enabled: bool) -> dict:
     min_withdrawable = data.get("min_withdrawable")
     max_withdrawable = data.get("max_withdrawable")
     if isinstance(currency, str) and currency.lower() != "sat":
-        if not isinstance(min_withdrawable, (int, float)) or not isinstance(
-            max_withdrawable, (int, float)
+        if not isinstance(min_withdrawable, int | float) or not isinstance(
+            max_withdrawable, int | float
         ):
             raise SetCardEnabledError(
                 "Withdraw returned invalid amount settings.",

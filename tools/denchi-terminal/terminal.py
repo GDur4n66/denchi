@@ -4,16 +4,15 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 import os
 import socket
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 import nfc
 import requests
 from dotenv import load_dotenv
-
 
 DEFAULT_TIMEOUT_SECONDS = 10
 DEFAULT_PRINTER_PORT = 9100
@@ -91,9 +90,7 @@ def create_admin_session(
                 timeout=DEFAULT_TIMEOUT_SECONDS,
             )
         except requests.RequestException as exc:
-            raise AdminSetupError(
-                f"LNbitsへのログインに失敗しました: {exc}"
-            ) from exc
+            raise AdminSetupError(f"LNbitsへのログインに失敗しました: {exc}") from exc
         data = response_data(response, "LNbitsへのログイン")
         token = data.get("access_token") if isinstance(data, dict) else None
         if not isinstance(token, str) or not token:
@@ -166,9 +163,7 @@ def build_admin_lookup(
         "Denchi Card一覧の取得",
     )
     wallets_by_id = {
-        wallet["id"]: wallet
-        for wallet in wallets
-        if isinstance(wallet.get("id"), str)
+        wallet["id"]: wallet for wallet in wallets if isinstance(wallet.get("id"), str)
     }
     lookup: dict[str, dict[str, Any]] = {}
 
@@ -195,9 +190,7 @@ def build_admin_lookup(
         )
         withdraw = response_data(response, f"Card {card_id} のWithdraw取得")
         if not isinstance(withdraw, dict):
-            raise AdminSetupError(
-                f"Card {card_id} のWithdrawレスポンスが不正です"
-            )
+            raise AdminSetupError(f"Card {card_id} のWithdrawレスポンスが不正です")
         if withdraw.get("id") != withdraw_id or withdraw.get("wallet") != wallet_id:
             raise AdminSetupError(f"Card {card_id} のWithdraw紐付けが不正です")
         lnurl_url = withdraw.get("lnurl_url")
@@ -209,13 +202,9 @@ def build_admin_lookup(
             )
             lnurlw_uri = normalize_lnurlw(lnurl_url, source_scheme)
         except ValueError as exc:
-            raise AdminSetupError(
-                f"Card {card_id} のWithdraw URLが不正です"
-            ) from exc
+            raise AdminSetupError(f"Card {card_id} のWithdraw URLが不正です") from exc
         if lnurlw_uri in lookup:
-            raise AdminSetupError(
-                "複数のDenchi Cardに同じWithdraw URLがあります"
-            )
+            raise AdminSetupError("複数のDenchi Cardに同じWithdraw URLがあります")
         lookup[lnurlw_uri] = {
             "card": card,
             "wallet": wallet,
@@ -233,9 +222,7 @@ def wallet_lightning_address(wallet: dict[str, Any], base_url: str) -> str:
     return f"{local_part}@{urlsplit(base_url).netloc}"
 
 
-def print_admin_result(
-    entry: dict[str, Any], balance_sats: int, base_url: str
-) -> None:
+def print_admin_result(entry: dict[str, Any], balance_sats: int, base_url: str) -> None:
     card = entry["card"]
     wallet = entry["wallet"]
     withdraw = entry["withdraw"]
@@ -253,7 +240,7 @@ def print_admin_result(
 
 
 def format_number(value: Any) -> str:
-    return f"{value:,}" if isinstance(value, (int, float)) else str(value)
+    return f"{value:,}" if isinstance(value, int | float) else str(value)
 
 
 def print_result(data: dict[str, Any]) -> None:
@@ -463,9 +450,7 @@ def process_admin_tag(
         lnurlw_uri = normalize_lnurlw(find_lnurlw(tag), "lnurlw")
         entry = lookup.get(lnurlw_uri)
         if not entry:
-            print(
-                "エラー: このカードは管理モードの一覧に見つかりません"
-            )
+            print("エラー: このカードは管理モードの一覧に見つかりません")
         else:
             response = session.get(
                 f"{base_url}/api/v1/wallet",
@@ -474,14 +459,10 @@ def process_admin_tag(
             )
             wallet_data = response_data(response, "現在の残高取得")
             balance_msat = (
-                wallet_data.get("balance")
-                if isinstance(wallet_data, dict)
-                else None
+                wallet_data.get("balance") if isinstance(wallet_data, dict) else None
             )
             if not isinstance(balance_msat, int) or isinstance(balance_msat, bool):
-                raise ValueError(
-                    "ウォレット残高のレスポンスが不正です"
-                )
+                raise ValueError("ウォレット残高のレスポンスが不正です")
             balance_sats = balance_msat // 1000
             print_admin_result(entry, balance_sats, base_url)
             if printer_host:
@@ -514,9 +495,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--api-url",
         default=os.environ.get("DENCHI_API_URL"),
-        help=(
-            "残高照会APIの完全なURL。未指定時は環境変数 DENCHI_API_URL を使用"
-        ),
+        help=("残高照会APIの完全なURL。未指定時は環境変数 DENCHI_API_URL を使用"),
     )
     parser.add_argument(
         "--printer-host",
@@ -576,9 +555,7 @@ def main() -> int:
     args = parse_args()
     mode = os.environ.get("DENCHI_MODE", "public").strip().lower()
     if mode not in ("public", "admin"):
-        print(
-            "エラー: DENCHI_MODEはpublicまたはadminで指定してください"
-        )
+        print("エラー: DENCHI_MODEはpublicまたはadminで指定してください")
         return 2
 
     admin_session: requests.Session | None = None
@@ -594,8 +571,7 @@ def main() -> int:
         missing = [name for name in required if not os.environ.get(name)]
         if missing:
             print(
-                "エラー: 管理モードに必要な環境変数がありません: "
-                + ", ".join(missing)
+                "エラー: 管理モードに必要な環境変数がありません: " + ", ".join(missing)
             )
             return 2
         try:
@@ -606,9 +582,7 @@ def main() -> int:
                 os.environ["DENCHI_PASSWORD"],
             )
             admin_lookup = build_admin_lookup(admin_session, base_url)
-            print(
-                f"管理モード: {len(admin_lookup)}枚のカードを読み込みました"
-            )
+            print(f"管理モード: {len(admin_lookup)}枚のカードを読み込みました")
         except (AdminSetupError, requests.RequestException) as exc:
             print(f"エラー: 管理モードの初期化に失敗しました: {exc}")
             if admin_session:
@@ -641,10 +615,7 @@ def main() -> int:
             if mode == "public":
                 print("Denchi Card端末を起動しました (Ctrl+Cで終了)")
             else:
-                print(
-                    "Denchi Card端末をadminモードで起動しました "
-                    "(Ctrl+Cで終了)"
-                )
+                print("Denchi Card端末をadminモードで起動しました " "(Ctrl+Cで終了)")
             while True:
                 print("\nカードをかざしてください...")
                 result = frontend.connect(rdwr={"on-connect": on_connect})
@@ -660,6 +631,7 @@ def main() -> int:
     finally:
         if admin_session:
             admin_session.close()
+    return 0
 
 
 if __name__ == "__main__":

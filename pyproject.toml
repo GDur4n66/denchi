@@ -5,10 +5,10 @@ requires-python = ">=3.10,<3.13"
 description = "Denchi Card NFC wallet extension for LNbits."
 urls = { Homepage = "https://github.com/GDur4n66/denchi", Repository = "https://github.com/GDur4n66/denchi" }
 
-dependencies = [ "lnbits>1" ]
+dependencies = [ "lnbits>=1.6.2" ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "black",
     "pytest-asyncio",
     "pytest",
@@ -17,8 +17,25 @@ dev-dependencies = [
     "ruff",
 ]
 
+[tool.poetry]
+package-mode = false
+
+[tool.pyright]
+extraPaths = [".."]
+include = ["."]
+exclude = [
+  ".venv",
+  "node_modules",
+  "tools/denchi-terminal",
+]
+venvPath = "."
+venv = ".venv"
+
 [tool.mypy]
-exclude = "(nostr/*)"
+exclude = [
+  "^nostr/",
+  "^tools/denchi-terminal/",
+]
 plugins = ["pydantic.mypy"]
 
 [tool.pydantic-mypy]

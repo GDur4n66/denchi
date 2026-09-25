@@ -107,13 +107,15 @@ def test_routes_and_receipt_environment_compatibility(monkeypatch):
     assert not any(path.startswith("/giftcard") for path in paths)
     monkeypatch.delenv("DENCHI_RECEIPT_PRINTER", raising=False)
     monkeypatch.setenv("GIFTCARD_RECEIPT_PRINTER", "tcp://old-printer:9100")
-    assert receipt.ReceiptSettings(_env_file=None).denchi_receipt_printer == (
-        "tcp://old-printer:9100"
+    legacy_settings = receipt.ReceiptSettings(
+        _env_file=None  # pyright: ignore[reportCallIssue]
     )
+    assert legacy_settings.denchi_receipt_printer == "tcp://old-printer:9100"
     monkeypatch.setenv("DENCHI_RECEIPT_PRINTER", "tcp://new-printer:9100")
-    assert receipt.ReceiptSettings(_env_file=None).denchi_receipt_printer == (
-        "tcp://new-printer:9100"
+    current_settings = receipt.ReceiptSettings(
+        _env_file=None  # pyright: ignore[reportCallIssue]
     )
+    assert current_settings.denchi_receipt_printer == "tcp://new-printer:9100"
 
 
 def test_import_refuses_active_legacy_manager(monkeypatch):

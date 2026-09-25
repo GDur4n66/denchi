@@ -9,7 +9,8 @@ async def m001_initial(db):
 
 
 async def m002_create_profiles(db):
-    await db.execute(f"""
+    await db.execute(
+        f"""
         CREATE TABLE denchi.profiles (
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
@@ -19,11 +20,13 @@ async def m002_create_profiles(db):
             expiration_value INTEGER,
             expiration_unit TEXT
         );
-    """)
+    """
+    )
 
 
 async def m003_create_cards(db):
-    await db.execute(f"""
+    await db.execute(
+        f"""
         CREATE TABLE denchi.cards (
             id TEXT PRIMARY KEY,
             wallet_id TEXT NOT NULL,
@@ -31,21 +34,26 @@ async def m003_create_cards(db):
             nfc_written BOOLEAN NOT NULL DEFAULT false,
             created_at TIMESTAMP NOT NULL DEFAULT {db.timestamp_now}
         );
-    """)
+    """
+    )
 
 
 async def m004_add_withdraw_lookup_hash(db):
     await db.execute("ALTER TABLE denchi.cards ADD COLUMN withdraw_lookup_hash TEXT")
     if db.type == "SQLITE":
-        await db.execute("""
+        await db.execute(
+            """
             CREATE UNIQUE INDEX denchi.cards_withdraw_lookup_hash_idx
             ON cards (withdraw_lookup_hash)
-            """)
+            """
+        )
     else:
-        await db.execute("""
+        await db.execute(
+            """
             CREATE UNIQUE INDEX cards_withdraw_lookup_hash_idx
             ON denchi.cards (withdraw_lookup_hash)
-            """)
+            """
+        )
 
 
 async def m005_import_giftcard(db):

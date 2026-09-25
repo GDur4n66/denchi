@@ -60,7 +60,7 @@ def base_url(value: str) -> str:
 
 
 class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self, request, fp, code, msg, headers, newurl):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
 

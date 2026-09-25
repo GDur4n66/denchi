@@ -7,4 +7,4 @@ on:
 
 jobs:
   lint:
-    uses: lnbits/lnbits/.github/workflows/lint.yml@dev
+    uses: lnbits/lnbits/.github/workflows/lint.yml@v1.6.2
